@@ -65,7 +65,7 @@ def create_access_token(
 # JWT TOKEN VALIDATION
 # =========================
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 
 def get_current_user(
