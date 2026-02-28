@@ -37,3 +37,40 @@ def read_me(
         "email": current_user.email,
         "role": current_user.role
     }
+
+from pydantic import BaseModel, EmailStr
+from app.core.security import get_password_hash
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str  
+
+@router.post("/signup", status_code=201)
+def signup(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+):
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = get_password_hash(user_data.password)
+
+    new_user = User(
+        name=user_data.name,
+        email=user_data.email,
+        password_hash=hashed_password,
+        role=user_data.role
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {
+        "id": new_user.id,
+        "email": new_user.email,
+        "role": new_user.role
+    }
