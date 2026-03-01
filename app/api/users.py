@@ -39,7 +39,7 @@ def read_me(
     }
 
 from pydantic import BaseModel, EmailStr
-from app.core.security import get_password_hash
+from app.core.security import hash_password
 
 class UserCreate(BaseModel):
     name: str
@@ -56,7 +56,7 @@ def signup(
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    hashed_password = get_password_hash(user_data.password)
+    hashed_password = hash_password(user_data.password)
 
     new_user = User(
         name=user_data.name,
