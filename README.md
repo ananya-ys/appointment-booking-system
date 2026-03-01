@@ -1,56 +1,130 @@
-# Appointment Booking System — Backend
+# Appointment Booking System — Production Backend (Level 1)
 
-A production-grade backend for an appointment booking system built using FastAPI, designed with clean architecture, secure authentication, and extensibility in mind.
+A production-ready backend for a role-aware appointment booking system built using FastAPI, PostgreSQL, and SQLAlchemy.
 
-This project focuses on building strong backend foundations that can later support complex booking logic, real-time features, and intelligent scheduling.
+This project focuses on backend engineering fundamentals: authentication, secure API design, booking conflict resolution, availability calculation, rate limiting, WebSocket updates, and real-world production deployment.
 
----
-
-## Features (Phase 1)
-
-- User signup with secure password hashing (bcrypt)
-- Login with JWT-based authentication
-- JWT-protected routes using Bearer tokens
-- Role-based user model (customer / provider / admin)
-- Clean separation of concerns (routes, services, core, models, schemas)
-- Health check endpoint for system monitoring
+Deployed in production using Render + Supabase (PostgreSQL).
 
 ---
 
-## Features (Phase 2 – Core Appointment Booking)
+## Overview
 
-Phase 2 implements the core business logic of the appointment booking system and is fully verified end-to-end.
+This system allows customers to book appointments with providers while ensuring:
 
-### Key Capabilities
+- Secure JWT-based authentication
+- Role-aware user model
+- Conflict-free booking logic
+- Dynamic availability calculation
+- Rate-limited endpoints
+- Real-time availability notifications via WebSockets
+- Production deployment with environment configuration
 
-- Appointment booking between customers and providers
-- Time-interval based appointments (start_time / end_time)
-- Overlap prevention to avoid double booking
-- Appointment lifecycle management:
-  - booked
-  - cancelled
-  - completed
-- Derived availability calculation (no pre-created slots)
-- Secure, JWT-protected appointment APIs
-- Clean service-layer business logic
-- Swagger-verified workflows
+This is not a basic CRUD app — it simulates real backend system design.
 
-### Core Appointment Endpoints
+---
 
-- POST /appointments – Book an appointment
-- POST /appointments/{id}/cancel – Cancel an appointment
-- GET /appointments/availability – Fetch provider availability for a given date
+## Architecture
 
-### Verification
+Clean separation of concerns:
 
-- Booking removes the slot from availability
-- Cancelling an appointment restores availability
-- Overlapping bookings are rejected
-- All flows tested and verified via Swagger UI
+app/
+├── api/            # Route definitions  
+├── core/           # Security, config, rate limiter, websocket manager  
+├── db/             # Database session setup  
+├── models/         # SQLAlchemy models  
+├── schemas/        # Pydantic request/response schemas  
+├── services/       # Business logic layer  
+└── main.py         # Application entry point  
 
-### Status
+---
 
-✅ Phase 2 completed and verified
+## Authentication System
+
+### Features
+
+- Secure password hashing (bcrypt via passlib)
+- JWT token generation (python-jose)
+- Token validation via dependency injection
+- Protected routes using OAuth2PasswordBearer
+- Role stored per user (customer / provider / admin)
+
+### Flow
+
+1. User signs up  
+2. Password is hashed before storage  
+3. User logs in with email + password  
+4. JWT token is issued  
+5. Token must be sent as:
+
+Authorization: Bearer <access_token>
+
+6. Token is decoded and user injected into request context  
+
+---
+
+## Appointment System (Core Logic)
+
+### Booking Logic Includes:
+
+- Time interval-based appointments
+- Overlap detection (no double booking)
+- Status lifecycle:
+  - BOOKED
+  - CANCELLED
+  - COMPLETED
+- Availability derived dynamically (not pre-generated slots)
+- Slot validation based on provider configuration
+
+### Conflict Prevention
+
+Booking is rejected if:
+
+- End time ≤ Start time
+- Slot overlaps with existing BOOKED appointment
+- Time outside provider availability window
+
+---
+
+## Real-Time Availability
+
+WebSocket endpoint:
+
+/appointments/ws/availability
+
+When a booking is created:
+- Connected clients receive "availability_updated"
+- Clients can re-fetch updated slots
+
+This simulates real-time system behavior.
+
+---
+
+## Rate Limiting
+
+Implemented using SlowAPI.
+
+Example:
+10 requests per minute
+
+Prevents abuse and simulates production-grade API control.
+
+---
+
+## Production Deployment
+
+### Hosted On
+
+- Render (Backend service)
+- Supabase PostgreSQL (Managed database)
+
+### Environment Variables Required
+
+DATABASE_URL  
+SECRET_KEY  
+ENV=production  
+
+All sensitive data is handled via environment configuration.
 
 ---
 
@@ -58,97 +132,74 @@ Phase 2 implements the core business logic of the appointment booking system and
 
 - FastAPI
 - PostgreSQL
-- SQLAlchemy ORM
+- SQLAlchemy
 - Pydantic
-- JWT Authentication (python-jose)
-- Alembic (database migrations)
-- Uvicorn
+- Alembic (migrations)
+- JWT (python-jose)
+- Passlib (bcrypt)
+- SlowAPI (rate limiting)
+- WebSockets
+- Render (deployment)
+- Supabase (database)
 
 ---
 
-## Authentication Flow
+## Verified Production Tests
 
-1. User signs up with name, email, and password
-2. Password is hashed using bcrypt before storing in the database
-3. User logs in using email and password
-4. On successful login, a JWT access token is issued
-5. Protected routes require the token to be sent via:
-
-   Authorization: Bearer <access_token>
-
-6. The token is validated, decoded, and the authenticated user is injected into the request context
-
----
-
-## Project Structure
-
-app/
-├── api/
-│   ├── appt.py        # Appointment routes
-│   └── users.py       # User & auth routes
-├── core/
-│   ├── config.py
-│   └── security.py    # JWT auth & role checks
-├── db/
-│   └── session.py
-├── models/
-│   ├── user.py
-│   └── appointment.py
-├── schemas/
-│   └── ...
-├── services/
-│   ├── appointments.py
-│   └── availability_service.py
-├── main.py
+- Signup works
+- Login issues valid JWT
+- /users/me protected via JWT
+- Booking creates appointment
+- Duplicate booking rejected
+- Availability updates after booking
+- Rate limiting returns 429
+- WebSocket connection broadcasts update
+- Production deployment stable
 
 ---
 
 ## Running Locally
 
-### Create and activate virtual environment
+### Create virtual environment
 
-python -m venv venv
-source venv/bin/activate      # macOS/Linux
-venv\Scripts\activate         # Windows
+python -m venv venv  
+venv\Scripts\activate   # Windows  
+source venv/bin/activate  # macOS/Linux  
 
 ### Install dependencies
 
-pip install -r requirements.txt
+pip install -r requirements.txt  
 
-### Start the server
+### Run server
 
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload  
 
-### Open API documentation
+### Open docs
 
-http://127.0.0.1:8000/docs
-
----
-
-## Health Check
-
-Endpoint:
-
-GET /health
-
-Response:
-
-{
-  "status": "ok"
-}
+http://127.0.0.1:8000/docs  
 
 ---
 
-## Roadmap
+## Future Extensions
 
-- Phase 3: Reliability, security hardening, and cloud deployment
-- WOW Features:
-  - Real-time availability updates
-  - Smart slot ranking (rule-based → ML-driven)
-- Level 2: Intelligent scheduling and ML-powered optimization engine
+- Strict route-level role enforcement (RBAC)
+- Appointment cancellation endpoint expansion
+- Provider dashboard endpoints
+- Redis-based distributed rate limiting
+- Dockerization
+- Horizontal scaling
+- ML-driven smart slot ranking (Level 2 project)
 
 ---
 
-## Notes
+## Project Status
 
-This project is developed incrementally in clearly defined phases to mirror real-world backend engineering workflows and production system design.
+Level 1 — Completed and Production Deployed
+
+This project establishes strong backend engineering fundamentals and serves as the foundation for more advanced real-time and ML-driven systems in future project levels.
+
+---
+
+## Author
+
+Backend-focused system built as part of a structured multi-level engineering project ladder.
